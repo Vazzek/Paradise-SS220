@@ -375,6 +375,22 @@
 	explosion(loc, 3, 6, 12, 16, 1, cause = "Exploding [name]")
 	qdel(src)
 
+/obj/machinery/power/port_gen/pacman/core
+	name = "T.H.E.G.E.N.E.R.A.T.O.R.C.O.R.E"
+	desc = "An advanced power generator that runs on diamonds. Rated for 200 kW maximum safe output!"
+	icon_state = "portgen2_0"
+	base_icon = "portgen2"
+	sheet_path = /obj/item/stack/sheet/mineral/diamond, /obj/item/stack/sheet/mineral/uranium, /obj/item/stack/sheet/mineral/plasma
+	sheet_name = "Diamond Sheets"
+
+	//max safe power output (power level = 8) is 200 kW and lasts for 1 hour - 3 or 4 of these could power the station
+	power_gen = 25000 //watts
+	max_power_output = 6
+	max_safe_output = 5
+	time_per_sheet = 576
+	max_temperature = 800
+	temperature_gain = 300
+
 #undef SHEET_VOLUME
 #undef TEMPERATURE_DIVISOR
 #undef TEMPERATURE_CHANGE_MAX
