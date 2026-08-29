@@ -387,8 +387,8 @@
 	max_power_output = 6 // Уровень 6 является форсажем.
 	max_safe_output = 5 // Максимальный уровень безопасной работы.
 	time_per_sheet = 120 // Одна плазменная пластина на уровне мощности 1 работает 120 тиков.
-	max_sheets = 500 // Максимальная вместимость топлива.
-	max_temperature = 800 // Внутренняя температура генератора.
+	max_sheets = 100 // Максимальная вместимость топлива.
+	max_temperature = 500 // Внутренняя температура генератора.
 	temperature_gain = 20
 // Количество тепла, производимого на первом уровне мощности.
 	var/heating_power = 20000
@@ -452,3 +452,8 @@
 	if(active)
 		. += SPAN_NOTICE("Current heating level: [power_output].")
 		. += SPAN_NOTICE("Current heat output: [heating_power * power_output].")
+//EVENT
+
+#undef SHEET_VOLUME
+#undef TEMPERATURE_DIVISOR
+#undef TEMPERATURE_CHANGE_MAX
