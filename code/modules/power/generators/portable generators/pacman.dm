@@ -374,23 +374,239 @@
 	//no special effects, but the explosion is pretty big (same as a supermatter shard).
 	explosion(loc, 3, 6, 12, 16, 1, cause = "Exploding [name]")
 	qdel(src)
-
+//SS220 EVENT
 /obj/machinery/power/port_gen/pacman/core
 	name = "T.H.E.G.E.N.E.R.A.T.O.R.C.O.R.E"
-	desc = "An advanced power generator that runs on diamonds. Rated for 200 kW maximum safe output!"
+	desc = "Ядро генератора, поглощающее плазму для генерации огромного количества тепла, способного обогревать даже самую ледяную пустошь."
 	icon_state = "portgen2_0"
 	base_icon = "portgen2"
-	sheet_path = /obj/item/stack/sheet/mineral/diamond, /obj/item/stack/sheet/mineral/uranium, /obj/item/stack/sheet/mineral/plasma
-	sheet_name = "Diamond Sheets"
+	sheet_path = /obj/item/stack/sheet/mineral/plasma
+	sheet_name = "Plasma Sheets"
+	var/generator_id
+	power_gen = 0 // Генератор не производит электричество
+	max_power_output = 6 // Уровень 6 является форсажем.
+	max_safe_output = 5 // Максимальный уровень безопасной работы.
+	time_per_sheet = 120 // Одна плазменная пластина на уровне мощности 1 работает 120 тиков.
+	max_sheets = 500 // Максимальная вместимость топлива.
+	max_temperature = 800 // Внутренняя температура генератора.
+	temperature_gain = 20
+// Количество тепла, производимого на первом уровне мощности.
+	var/heating_power = 20000
 
-	//max safe power output (power level = 8) is 200 kW and lasts for 1 hour - 3 or 4 of these could power the station
-	power_gen = 25000 //watts
-	max_power_output = 6
-	max_safe_output = 5
-	time_per_sheet = 576
-	max_temperature = 800
-	temperature_gain = 300
+/obj/machinery/power/port_gen/pacman/core/process()
+// Для работы генератору не требуется powernet,
+// поскольку он производит тепло, а не электричество.
+/obj/machinery/power/port_gen/pacman/core/process()
+	if(anchored && active && has_fuel() && !is_broken())
+		var/datum/milla_safe/generator_core_process/milla = new()
+		milla.invoke_async(src)
+		use_fuel()
+		return
 
+	active = FALSE
+	handle_inactive()
+	update_icon()
+
+/datum/milla_safe/generator_core_process
+
+/datum/milla_safe/generator_core_process/on_run(obj/machinery/power/port_gen/pacman/core/generator)
+	if(!generator.active || generator.is_broken())
+		return
+	var/turf/simulated/L = get_turf(generator)
+	if(!istype(L))
+		return
+	var/datum/gas_mixture/env = get_turf_air(L)
+	if(!env)
+		return
+
+// Берём часть атмосферы тайла для обработки.
+	var/transfer_moles = 0.25 * env.total_moles()
+	if(transfer_moles <= 0)
+		return
+	var/datum/gas_mixture/removed = env.remove(transfer_moles)
+	if(!removed)
+		return
+	var/heat_capacity = removed.heat_capacity()
+
+	if(heat_capacity)
+// Количество производимого тепла зависит от текущего уровня мощности.
+		var/generated_heat = generator.heating_power * generator.power_output
+
+		removed.set_temperature(
+			min(
+				removed.temperature() + generated_heat / heat_capacity,
+			1000
+			)
+		)
+
+	env.merge(removed)
+
+/obj/machinery/power/port_gen/pacman/core/drop_fuel()
+// Загруженное топливо нельзя извлечь обратно.
+	return
+
+/obj/machinery/power/port_gen/pacman/core/examine(mob/user)
+	. = ..()
+
+	. += SPAN_NOTICE("The generator is configured to produce heat instead of electrical power.")
+
+	if(active)
+		. += SPAN_NOTICE("Current heating level: [power_output].")
+		. += SPAN_NOTICE("Current heat output: [heating_power * power_output].")
+
+// MARK Консоль управления ядром генератора
+
+/obj/machinery/computer/generator_core_monitor
+	name = "generator core monitoring console"
+	desc = "Used to monitor and control generator cores."
+	icon_keyboard = "power_key"
+	icon_screen = "smmon_0"
+	circuit = /obj/item/circuitboard/generator_core_monitor
+	light_color = LIGHT_COLOR_YELLOW
+
+/// Список найденных ядер
+	var/list/generator_cores
+
+/// Выбранное ядро
+	var/obj/machinery/power/port_gen/pacman/core/active
+
+/obj/machinery/computer/generator_core_monitor/Destroy()
+	active = null
+	return ..()
+
+/obj/machinery/computer/generator_core_monitor/attack_ai(mob/user)
+	attack_hand(user)
+
+/obj/machinery/computer/generator_core_monitor/attack_hand(mob/user)
+	add_fingerprint(user)
+
+	if(stat & (BROKEN|NOPOWER))
+		return
+
+	ui_interact(user)
+
+/obj/machinery/computer/generator_core_monitor/ui_state(mob/user)
+	return GLOB.default_state
+
+/obj/machinery/computer/generator_core_monitor/ui_interact(mob/user, datum/tgui/ui = null)
+	ui = SStgui.try_update_ui(user, src, ui)
+
+	if(!ui)
+		ui = new(user, src, "GeneratorCoreMonitor", name)
+		ui.open()
+
+/obj/machinery/computer/generator_core_monitor/proc/refresh()
+	generator_cores = list()
+
+	var/turf/T = get_turf(src)
+
+	if(!T)
+		return
+
+	for(var/obj/machinery/power/port_gen/pacman/core/G in world)
+		if(!atoms_share_level(G, T))
+			continue
+
+		generator_cores.Add(G)
+
+	if(!(active in generator_cores))
+		active = null
+
+/obj/machinery/computer/generator_core_monitor/ui_data(mob/user)
+	var/list/data = list()
+
+	if(istype(active))
+		var/turf/T = get_turf(active)
+
+		if(!T)
+			active = null
+			return data
+
+		var/datum/gas_mixture/air = T.get_readonly_air()
+
+		data["active"] = TRUE
+
+		data["generator_on"] = active.active
+
+		data["power_output"] = active.power_output
+		data["max_power_output"] = active.max_power_output
+		data["max_safe_output"] = active.max_safe_output
+
+		data["fuel"] = active.sheets
+		data["max_fuel"] = active.max_sheets
+
+		data["temperature"] = active.temperature
+		data["max_temperature"] = active.max_temperature
+
+		data["overheating"] = active.overheating
+
+		if(air)
+			data["ambient_temperature"] = air.temperature()
+			data["ambient_pressure"] = air.return_pressure()
+
+	else
+		var/list/generators = list()
+
+		for(var/obj/machinery/power/port_gen/pacman/core/G in generator_cores)
+			var/area/A = get_area(G)
+
+			if(!A)
+				continue
+
+			generators.Add(list(list(
+				"area_name" = A.name,
+				"generator_id" = G.UID(),
+				"active" = G.active,
+				"temperature" = G.temperature
+			)))
+
+		data["active"] = FALSE
+		data["generators"] = generators
+
+	return data
+
+/obj/machinery/computer/generator_core_monitor/ui_act(action, params)
+	if(..())
+		return
+
+	if(stat & (BROKEN|NOPOWER))
+		return
+
+	. = TRUE
+
+	switch(action)
+
+		if("refresh")
+			refresh()
+
+		if("view")
+			var/generator_ref = params["view"]
+
+			for(var/obj/machinery/power/port_gen/pacman/core/G in generator_cores)
+				if(G.UID() == generator_ref)
+					active = G
+					break
+
+		if("back")
+			active = null
+
+		if("toggle")
+			if(active)
+				active.active = !active.active
+				active.update_icon()
+
+		if("change_power")
+			if(active)
+				var/new_power = text2num(params["power"])
+
+				if(new_power)
+					active.power_output = clamp(
+						new_power,
+						1,
+						active.max_power_output
+					)
+
+//SS220 EVENT
 #undef SHEET_VOLUME
 #undef TEMPERATURE_DIVISOR
 #undef TEMPERATURE_CHANGE_MAX
