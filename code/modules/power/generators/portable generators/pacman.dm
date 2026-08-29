@@ -393,7 +393,6 @@
 // Количество тепла, производимого на первом уровне мощности.
 	var/heating_power = 20000
 
-/obj/machinery/power/port_gen/pacman/core/process()
 // Для работы генератору не требуется powernet,
 // поскольку он производит тепло, а не электричество.
 /obj/machinery/power/port_gen/pacman/core/process()
@@ -410,7 +409,7 @@
 /datum/milla_safe/generator_core_process
 
 /datum/milla_safe/generator_core_process/on_run(obj/machinery/power/port_gen/pacman/core/generator)
-	if(!generator.active || generator.is_broken())
+	if(!generator || generator.active || generator.is_broken())
 		return
 	var/turf/simulated/L = get_turf(generator)
 	if(!istype(L))
@@ -489,6 +488,7 @@
 	return GLOB.default_state
 
 /obj/machinery/computer/generator_core_monitor/ui_interact(mob/user, datum/tgui/ui = null)
+	refresh()
 	ui = SStgui.try_update_ui(user, src, ui)
 
 	if(!ui)
@@ -498,16 +498,10 @@
 /obj/machinery/computer/generator_core_monitor/proc/refresh()
 	generator_cores = list()
 
-	var/turf/T = get_turf(src)
-
-	if(!T)
-		return
-
 	for(var/obj/machinery/power/port_gen/pacman/core/G in world)
-		if(!atoms_share_level(G, T))
-			continue
-
 		generator_cores.Add(G)
+
+	message_admins("Generator Core Monitor found [generator_cores.len] generator cores.")
 
 	if(!(active in generator_cores))
 		active = null
@@ -555,7 +549,7 @@
 
 			generators.Add(list(list(
 				"area_name" = A.name,
-				"generator_id" = G.UID(),
+				"generator_id" = "[ref(G)]",
 				"active" = G.active,
 				"temperature" = G.temperature
 			)))
@@ -583,7 +577,7 @@
 			var/generator_ref = params["view"]
 
 			for(var/obj/machinery/power/port_gen/pacman/core/G in generator_cores)
-				if(G.UID() == generator_ref)
+				if("[ref(G)]" == generator_ref)
 					active = G
 					break
 
