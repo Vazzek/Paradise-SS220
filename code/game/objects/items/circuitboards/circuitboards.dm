@@ -298,12 +298,6 @@
 	icon_state = "security"
 	build_path = /obj/machinery/computer/brigcells
 
-/obj/item/circuitboard/generator_core_monitor
-	board_name = "Generator Core Monitoring Console"
-	icon_state = "engineering"
-	build_path = /obj/machinery/computer/generator_core_monitor
-	origin_tech = "programming=8;powerstorage=8"
-
 /obj/item/circuitboard/sm_monitor
 	board_name = "Supermatter Monitoring Console"
 	icon_state = "engineering"
