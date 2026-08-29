@@ -390,8 +390,8 @@
 	max_sheets = 100 // Максимальная вместимость топлива.
 	max_temperature = 500 // Внутренняя температура генератора.
 	temperature_gain = 20
-// Количество тепла, производимого на первом уровне мощности.
-	var/heating_power = 20000
+	var/heating_power = 20000 // Количество тепла, производимого на первом уровне мощности
+	var/max_heating_temperature = 2000  // Максимальная температура газа, которую способен создать генератор.
 
 // Для работы генератору не требуется powernet,
 // поскольку он производит тепло, а не электричество.
@@ -419,7 +419,7 @@
 		return
 
 // Берём часть атмосферы тайла для обработки.
-	var/transfer_moles = 0.25 * env.total_moles()
+	var/transfer_moles = 0.75 * env.total_moles()
 	if(transfer_moles <= 0)
 		return
 	var/datum/gas_mixture/removed = env.remove(transfer_moles)
@@ -427,16 +427,28 @@
 		return
 	var/heat_capacity = removed.heat_capacity()
 
-	if(heat_capacity)
-// Количество производимого тепла зависит от текущего уровня мощности.
-		var/generated_heat = generator.heating_power * generator.power_output
+	var/generated_heat = generator.heating_power
 
-		removed.set_temperature(
-			min(
-				removed.temperature() + generated_heat / heat_capacity,
-			1000
-			)
-		)
+	switch(generator.power_output)
+		if(1)
+			generated_heat *= 1
+		if(2)
+			generated_heat *= 2
+		if(3)
+			generated_heat *= 4
+		if(4)
+			generated_heat *= 7
+		if(5)
+			generated_heat *= 11
+		if(6)
+			generated_heat *= 16
+
+	var/new_temperature = removed.temperature() + (generated_heat / heat_capacity)
+
+	if(new_temperature > generator.max_heating_temperature)
+		new_temperature = generator.max_heating_temperature
+
+	removed.set_temperature(new_temperature)
 
 	env.merge(removed)
 
