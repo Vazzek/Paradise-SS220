@@ -383,16 +383,40 @@
 	sheet_path = /obj/item/stack/sheet/mineral/plasma
 	sheet_name = "Plasma Sheets"
 	var/generator_id
-	power_gen = 0 // Генератор не производит электричество
+	power_gen = 20000// Генератор производит электричество по просьбе.
 	max_power_output = 6 // Уровень 6 является форсажем.
 	max_safe_output = 5 // Максимальный уровень безопасной работы.
-	time_per_sheet = 120 // Одна плазменная пластина на уровне мощности 1 работает 120 тиков.
+	time_per_sheet = 60 // Одна плазменная пластина на уровне мощности 1 работает 60 тиков.
 	max_sheets = 100 // Максимальная вместимость топлива.
 	max_temperature = 800 // Внутренняя температура генератора.
-	temperature_gain = 20
-	var/heating_power = 25000 // Количество тепла, производимого на первом уровне мощности
+	temperature_gain = 5
+	var/heating_power = 65000 // Количество тепла, производимого на первом уровне мощности
 	var/max_heating_temperature = 2000  // Максимальная температура газа, которую способен создать генератор.
+	var/core_cooling = 8 // Более простой микроконтроль генератора
+	var/idle_temperature = 20 // Чтоб температура генератора не стала отрицательной
 
+/obj/machinery/power/port_gen/pacman/core/use_fuel()
+	var/needed_sheets = power_output / time_per_sheet  // Расход топлива.
+
+	if(needed_sheets > sheet_left)
+		sheets--
+		sheet_left = (1 + sheet_left) - needed_sheets
+	else
+		sheet_left -= needed_sheets
+
+	temperature += power_output * temperature_gain // Нагрев ядра.
+
+ // Внутреннее охлаждение.
+	if(temperature > idle_temperature)
+		temperature = max(
+		idle_temperature,
+		temperature - core_cooling
+	)
+
+	if(temperature > max_temperature)
+		overheat()
+	else if(overheating > 0)
+		overheating--
 // Для работы генератору не требуется powernet,
 // поскольку он производит тепло, а не электричество.
 /obj/machinery/power/port_gen/pacman/core/process()
@@ -419,7 +443,7 @@
 		return
 
 // Берём часть атмосферы тайла для обработки.
-	var/transfer_moles = 0.75 * env.total_moles()
+	var/transfer_moles = 0.90 * env.total_moles()
 	if(transfer_moles <= 0)
 		return
 	var/datum/gas_mixture/removed = env.remove(transfer_moles)
@@ -433,15 +457,15 @@
 		if(1)
 			generated_heat *= 1
 		if(2)
-			generated_heat *= 2
+			generated_heat *= 3
 		if(3)
-			generated_heat *= 4
+			generated_heat *= 8
 		if(4)
-			generated_heat *= 7
+			generated_heat *= 12
 		if(5)
-			generated_heat *= 11
-		if(6)
 			generated_heat *= 16
+		if(6)
+			generated_heat *= 24
 
 	var/new_temperature = removed.temperature() + (generated_heat / heat_capacity)
 
