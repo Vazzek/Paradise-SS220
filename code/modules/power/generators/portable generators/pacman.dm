@@ -381,19 +381,19 @@
 	icon_state = "portgen2_0"
 	base_icon = "portgen2"
 	sheet_path = /obj/item/stack/sheet/mineral/plasma
-	sheet_name = "Plasma Sheets"
+	sheet_name = "Топливо"
 	var/generator_id
-	power_gen = 20000// Генератор производит электричество по просьбе.
+	power_gen = 20000 // Генератор производит электричество по просьбе.
 	max_power_output = 6 // Уровень 6 является форсажем.
 	max_safe_output = 5 // Максимальный уровень безопасной работы.
 	time_per_sheet = 60 // Одна плазменная пластина на уровне мощности 1 работает 60 тиков.
 	max_sheets = 100 // Максимальная вместимость топлива.
-	max_temperature = 800 // Внутренняя температура генератора.
+	max_temperature = 150 // Внутренняя температура генератора.
 	temperature_gain = 5
-	var/heating_power = 260000 // Количество тепла, производимого на первом уровне мощности
+	var/heating_power = 300000 // Количество тепла, производимого на первом уровне мощности
 	var/max_heating_temperature = 500  // Максимальная температура газа, которую способен создать генератор.
 	var/core_cooling = 8 // Более простой микроконтроль генератора
-	var/idle_temperature = 20 // Чтоб температура генератора не стала отрицательной
+	var/idle_temperature = 100 // Чтоб температура генератора не стала отрицательной
 
 /obj/machinery/power/port_gen/pacman/core/use_fuel()
 	var/needed_sheets = power_output / time_per_sheet  // Расход топлива.
